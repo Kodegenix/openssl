@@ -14,6 +14,7 @@
 #include <openssl/ts.h>
 #include <openssl/pkcs7.h>
 #include <openssl/crypto.h>
+#include <openssl/engine.h>
 #include "ts_lcl.h"
 
 static ASN1_INTEGER *def_serial_cb(struct TS_resp_ctx *, void *);
@@ -140,6 +141,7 @@ void TS_RESP_CTX_free(TS_RESP_CTX *ctx)
     if (!ctx)
         return;
 
+    ENGINE_free(ctx->engine);
     X509_free(ctx->signer_cert);
     EVP_PKEY_free(ctx->signer_key);
     sk_X509_pop_free(ctx->certs, X509_free);
@@ -150,6 +152,22 @@ void TS_RESP_CTX_free(TS_RESP_CTX *ctx)
     ASN1_INTEGER_free(ctx->millis);
     ASN1_INTEGER_free(ctx->micros);
     OPENSSL_free(ctx);
+}
+
+int TS_RESP_CTX_set_engine(TS_RESP_CTX *ctx, ENGINE *engine)
+{
+    ENGINE_free(ctx->engine);
+    ctx->engine = engine;
+    if (ctx->engine != NULL) {
+        ENGINE_up_ref(ctx->engine);
+    }
+
+    return 1;
+}
+
+ENGINE* TS_RESP_CTX_get_engine(TS_RESP_CTX *ctx)
+{
+    return ctx->engine;
 }
 
 int TS_RESP_CTX_set_signer_cert(TS_RESP_CTX *ctx, X509 *signer)

@@ -160,6 +160,7 @@ struct ESS_signing_cert_v2_st {
 
 
 struct TS_resp_ctx {
+    ENGINE* engine;
     X509 *signer_cert;
     EVP_PKEY *signer_key;
     const EVP_MD *signer_md;
