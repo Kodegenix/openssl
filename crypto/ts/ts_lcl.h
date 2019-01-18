@@ -1,7 +1,7 @@
 /*
  * Copyright 2015-2016 The OpenSSL Project Authors. All Rights Reserved.
  *
- * Licensed under the OpenSSL license (the "License").  You may not use
+ * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
  * in the file LICENSE in the source distribution or at
  * https://www.openssl.org/source/license.html
@@ -160,6 +160,7 @@ struct ESS_signing_cert_v2_st {
 
 
 struct TS_resp_ctx {
+    ENGINE* engine;
     X509 *signer_cert;
     EVP_PKEY *signer_key;
     const EVP_MD *signer_md;

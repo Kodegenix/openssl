@@ -1,7 +1,7 @@
 /*
  * Copyright 2006-2016 The OpenSSL Project Authors. All Rights Reserved.
  *
- * Licensed under the OpenSSL license (the "License").  You may not use
+ * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
  * in the file LICENSE in the source distribution or at
  * https://www.openssl.org/source/license.html
@@ -12,6 +12,8 @@
 #include <openssl/crypto.h>
 #include "internal/cryptlib.h"
 #include <openssl/pem.h>
+#include <apps/apps.h>
+#include <openssl/ui.h>
 #include <openssl/engine.h>
 #include <openssl/ts.h>
 
@@ -84,18 +86,35 @@ STACK_OF(X509) *TS_CONF_load_certs(const char *file)
     return othercerts;
 }
 
-EVP_PKEY *TS_CONF_load_key(const char *file, const char *pass)
+EVP_PKEY *TS_CONF_load_key(const char *file, const char *pass, TS_RESP_CTX *ctx)
 {
-    BIO *key = NULL;
     EVP_PKEY *pkey = NULL;
+    BIO *key = NULL;
+    ENGINE* engine = NULL;
+    UI_METHOD* ui_method = NULL;
+    PW_CB_DATA cb_data;
 
-    if ((key = BIO_new_file(file, "r")) == NULL)
-        goto end;
-    pkey = PEM_read_bio_PrivateKey(key, NULL, NULL, (char *)pass);
- end:
+    engine = TS_RESP_CTX_get_engine(ctx);
+
+    if (engine != NULL) {
+#ifndef OPENSSL_NO_ENGINE
+        if (ENGINE_init(engine)) {
+            cb_data.password = pass;
+            cb_data.prompt_info = "password";
+            ui_method = UI_OpenSSL();
+            pkey = ENGINE_load_private_key(engine, file, ui_method, &cb_data);
+            ENGINE_finish(engine);
+        }
+#endif
+    } else {
+        if ((key = BIO_new_file(file, "r")) != NULL) {
+            pkey = PEM_read_bio_PrivateKey(key, NULL, NULL, (char *) pass);
+            BIO_free(key);
+        }
+    }
+
     if (pkey == NULL)
         TSerr(TS_F_TS_CONF_LOAD_KEY, TS_R_CANNOT_LOAD_KEY);
-    BIO_free(key);
     return pkey;
 }
 
@@ -142,14 +161,14 @@ int TS_CONF_set_serial(CONF *conf, const char *section, TS_serial_cb cb,
 #ifndef OPENSSL_NO_ENGINE
 
 int TS_CONF_set_crypto_device(CONF *conf, const char *section,
-                              const char *device)
+                              const char *device, TS_RESP_CTX *ctx)
 {
     int ret = 0;
 
     if (device == NULL)
         device = NCONF_get_string(conf, section, ENV_CRYPTO_DEVICE);
 
-    if (device && !TS_CONF_set_default_engine(device)) {
+    if (device && !TS_CONF_set_default_engine(device, ctx)) {
         ts_CONF_invalid(section, ENV_CRYPTO_DEVICE);
         goto err;
     }
@@ -158,13 +177,14 @@ int TS_CONF_set_crypto_device(CONF *conf, const char *section,
     return ret;
 }
 
-int TS_CONF_set_default_engine(const char *name)
+int TS_CONF_set_default_engine(const char *name, TS_RESP_CTX *ctx)
 {
     ENGINE *e = NULL;
     int ret = 0;
 
-    if (strcmp(name, "builtin") == 0)
+    if (strcmp(name, "builtin") == 0) {
         return 1;
+    }
 
     if ((e = ENGINE_by_id(name)) == NULL)
         goto err;
@@ -172,7 +192,7 @@ int TS_CONF_set_default_engine(const char *name)
         ENGINE_ctrl(e, ENGINE_CTRL_CHIL_SET_FORKCHECK, 1, 0, 0);
     if (!ENGINE_set_default(e, ENGINE_METHOD_ALL))
         goto err;
-    ret = 1;
+    ret = TS_RESP_CTX_set_engine(ctx, e);
 
  err:
     if (!ret) {
@@ -243,7 +263,7 @@ int TS_CONF_set_signer_key(CONF *conf, const char *section,
         ts_CONF_lookup_fail(section, ENV_SIGNER_KEY);
         goto err;
     }
-    if ((key_obj = TS_CONF_load_key(key, pass)) == NULL)
+    if ((key_obj = TS_CONF_load_key(key, pass, ctx)) == NULL)
         goto err;
     if (!TS_RESP_CTX_set_signer_key(ctx, key_obj))
         goto err;

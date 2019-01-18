@@ -1,7 +1,7 @@
 /*
  * Copyright 2006-2018 The OpenSSL Project Authors. All Rights Reserved.
  *
- * Licensed under the OpenSSL license (the "License").  You may not use
+ * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
  * in the file LICENSE in the source distribution or at
  * https://www.openssl.org/source/license.html
@@ -682,7 +682,7 @@ static TS_RESP *create_response(CONF *conf, const char *section, const char *eng
     if (!TS_CONF_set_serial(conf, section, serial_cb, resp_ctx))
         goto end;
 # ifndef OPENSSL_NO_ENGINE
-    if (!TS_CONF_set_crypto_device(conf, section, engine))
+    if (!TS_CONF_set_crypto_device(conf, section, engine, resp_ctx))
         goto end;
 # endif
     if (!TS_CONF_set_signer_cert(conf, section, signer, resp_ctx))

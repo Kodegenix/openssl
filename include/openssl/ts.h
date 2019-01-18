@@ -1,7 +1,7 @@
 /*
  * Copyright 2006-2018 The OpenSSL Project Authors. All Rights Reserved.
  *
- * Licensed under the OpenSSL license (the "License").  You may not use
+ * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
  * in the file LICENSE in the source distribution or at
  * https://www.openssl.org/source/license.html
@@ -328,6 +328,9 @@ DEFINE_STACK_OF_CONST(EVP_MD)
 TS_RESP_CTX *TS_RESP_CTX_new(void);
 void TS_RESP_CTX_free(TS_RESP_CTX *ctx);
 
+int TS_RESP_CTX_set_engine(TS_RESP_CTX *ctx, ENGINE *engine);
+ENGINE* TS_RESP_CTX_get_engine(TS_RESP_CTX *ctx);
+
 /* This parameter must be set. */
 int TS_RESP_CTX_set_signer_cert(TS_RESP_CTX *ctx, X509 *signer);
 
@@ -520,14 +523,15 @@ int TS_MSG_IMPRINT_print_bio(BIO *bio, TS_MSG_IMPRINT *msg);
 
 X509 *TS_CONF_load_cert(const char *file);
 STACK_OF(X509) *TS_CONF_load_certs(const char *file);
-EVP_PKEY *TS_CONF_load_key(const char *file, const char *pass);
+EVP_PKEY *TS_CONF_load_key(const char *file, const char *pass,
+                           TS_RESP_CTX *ctx);
 const char *TS_CONF_get_tsa_section(CONF *conf, const char *section);
 int TS_CONF_set_serial(CONF *conf, const char *section, TS_serial_cb cb,
                        TS_RESP_CTX *ctx);
 #ifndef OPENSSL_NO_ENGINE
 int TS_CONF_set_crypto_device(CONF *conf, const char *section,
-                              const char *device);
-int TS_CONF_set_default_engine(const char *name);
+                              const char *device, TS_RESP_CTX *ctx);
+int TS_CONF_set_default_engine(const char *name, TS_RESP_CTX *ctx);
 #endif
 int TS_CONF_set_signer_cert(CONF *conf, const char *section,
                             const char *cert, TS_RESP_CTX *ctx);
